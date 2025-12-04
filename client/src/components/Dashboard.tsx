@@ -402,7 +402,7 @@ export function Dashboard() {
                     type="number"
                     step="1"
                     min="0"
-                    value={formData.value}
+                    value={formData.age}
                     onChange={(e) => {
                       const value = e.target.value;
                       setFormData({...formData, age: value === '' ? 0 : parseFloat(value) || 0});
