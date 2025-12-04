@@ -37,10 +37,11 @@ eventsRouter.get('/add', async (req: Request, res: Response) => {
   try {
     const { type, name, email, value, age, timestamp } = req.query;
     
+    const convertedAge = age ? parseInt(age as string, 10) : undefined;
     const validatedData = eventSchema.parse({
       type,
       name,
-      age,
+      convertedAge,
       email,
       value: value ? parseFloat(value as string) : undefined,
       timestamp,
@@ -56,6 +57,7 @@ eventsRouter.get('/add', async (req: Request, res: Response) => {
         timestamp: validatedData.timestamp ? new Date(validatedData.timestamp) : new Date(),
       },
     });
+
 
     res.status(201).json(event);
   } catch (error) {
