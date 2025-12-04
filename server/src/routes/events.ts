@@ -71,32 +71,59 @@ eventsRouter.get('/add', async (req: Request, res: Response) => {
 
 eventsRouter.get('/', async (req: Request, res: Response) => {
   try {
-    const { date_from, date_to } = req.query;
+    const { date_from, date_to, email, type, name } = req.query;
 
-    let startDate: Date;
-    let endDate: Date;
+    console.log('Query params:', { date_from, date_to, email, type, name });
 
-    if (date_from && date_to) {
-      startDate = new Date(date_from as string);
-      endDate = new Date(date_to as string);
-      endDate.setHours(23, 59, 59, 999);
-    } else {
-      endDate = new Date();
-      startDate = new Date();
-      startDate.setDate(startDate.getDate() - 7);
+    const whereClause: any = {};
+
+    if (date_from || date_to) {
+      whereClause.timestamp = {};
+      
+      if (date_from) {
+        const startDate = new Date(date_from as string);
+        whereClause.timestamp.gte = startDate;
+      }
+      
+      if (date_to) {
+        const endDate = new Date(date_to as string);
+        endDate.setHours(23, 59, 59, 999);
+        whereClause.timestamp.lte = endDate;
+      } else if (date_from) {
+        const today = new Date();
+        today.setHours(23, 59, 59, 999);
+        whereClause.timestamp.lte = today;
+      }
     }
 
+    if (email) {
+      whereClause.email = {
+        contains: email as string,
+        mode: 'insensitive'
+      };
+    }
+
+    if (type) {
+      whereClause.type = type;
+    }
+
+    if (name) {
+      whereClause.name = {
+        contains: name as string,
+        mode: 'insensitive'
+      };
+    }
+
+    console.log('Where clause:', whereClause);
+
     const events = await prisma.event.findMany({
-      where: {
-        timestamp: {
-          gte: startDate,
-          lte: endDate,
-        },
-      },
+      where: whereClause,
       orderBy: {
         timestamp: 'desc',
       },
     });
+
+    console.log(`Found ${events.length} events`);
 
     res.json(events);
   } catch (error) {
