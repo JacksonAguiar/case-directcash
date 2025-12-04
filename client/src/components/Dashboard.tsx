@@ -257,6 +257,7 @@ export function Dashboard() {
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Tipo</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Nome</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">E-mail</th>
+                  <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Idade</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Valor</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Data da Compra</th>
                   <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Ações</th>
@@ -283,6 +284,7 @@ export function Dashboard() {
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-700">{event.name}</td>
                       <td className="px-6 py-4 text-sm text-gray-700">{event.email}</td>
+                      <td className="px-6 py-4 text-sm text-gray-700">{event.age}</td>
                       <td className="px-6 py-4 text-sm font-semibold text-gray-900">
                         {event.value.toLocaleString('pt-BR', { 
                           style: 'currency', 

@@ -4,6 +4,7 @@ export interface Event {
   name: string;
   email: string;
   value: number;
+  age: number;
   timestamp: string;
   createdAt: string;
 }
