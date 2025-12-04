@@ -1,7 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { format } from 'date-fns';
-import { Trash2, RefreshCw, DollarSign, TrendingUp } from 'lucide-react';
-import { eventsApi } from '../services/api';
+import { Trash2, RefreshCw, DollarSign, TrendingUp, Plus, X } from 'lucide-react';
+import { eventsApi, extractValidationErrors, type ValidationError } from '../services/api';
 import type { Event } from '../types/event';
 
 export function Dashboard() {
@@ -9,15 +9,39 @@ export function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'payment' | 'upsell'>('all');
+  const [showAddForm, setShowAddForm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [formErrors, setFormErrors] = useState<ValidationError[]>([]);
+  const [formData, setFormData] = useState({
+    type: 'payment' as 'payment' | 'upsell',
+    name: '',
+    email: '',
+    value: '' as number | '',
+    timestamp: new Date().toISOString().slice(0, 16)
+  });
 
-  const fetchEvents = async () => {
+  const updateUrl = useCallback(() => {
+    const params = new URLSearchParams();
+    if (dateFrom) params.append('date_from', dateFrom);
+    if (dateTo) params.append('date_to', dateTo);
+    if (typeFilter !== 'all') params.append('type', typeFilter);
+    
+    const newUrl = params.toString() ? `?${params.toString()}` : '';
+    window.history.pushState({}, '', newUrl);
+  }, [dateFrom, dateTo, typeFilter]);
+
+  const fetchEvents = useCallback(async () => {
     setLoading(true);
     try {
       const filters = {
         date_from: dateFrom || undefined,
         date_to: dateTo || undefined,
+        type: typeFilter !== 'all' ? typeFilter : undefined,
       };
+      console.log('Fetching events with filters:', filters);
       const data = await eventsApi.getEvents(filters);
+      console.log('Events received:', data);
       setEvents(data);
     } catch (error) {
       console.error('Error fetching events:', error);
@@ -25,7 +49,7 @@ export function Dashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [dateFrom, dateTo, typeFilter]);
 
   const handleDelete = async (id: string) => {
     if (!confirm('Deseja realmente excluir este evento?')) return;
@@ -39,9 +63,76 @@ export function Dashboard() {
     }
   };
 
+  const getFieldError = (fieldName: string): string | undefined => {
+    const error = formErrors.find(err => err.field === fieldName);
+    return error?.message;
+  };
+
+  const clearFieldError = (fieldName: string) => {
+    setFormErrors(prev => prev.filter(err => err.field !== fieldName));
+  };
+
+  const closeForm = () => {
+    setShowAddForm(false);
+    setFormErrors([]);
+    setFormData({
+      type: 'payment',
+      name: '',
+      email: '',
+      value: '',
+      timestamp: new Date().toISOString().slice(0, 16)
+    });
+  };
+
+  const handleCreateEvent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setFormErrors([]);
+    
+    try {
+      const newEvent = await eventsApi.createEvent({
+        ...formData,
+        value: formData.value === '' ? 0 : formData.value,
+        timestamp: new Date(formData.timestamp).toISOString(),
+        createdAt: new Date().toISOString()
+      });
+      setEvents([newEvent, ...events]);
+      setShowAddForm(false);
+      setFormData({
+        type: 'payment',
+        name: '',
+        email: '',
+        value: '',
+        timestamp: new Date().toISOString().slice(0, 16)
+      });
+    } catch (error: any) {
+      console.error('Error creating event:', error);
+      const validationErrors = extractValidationErrors(error);
+      if (validationErrors.length > 0) {
+        setFormErrors(validationErrors);
+      } else {
+        alert('Erro ao criar evento');
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const type = urlParams.get('type') as 'payment' | 'upsell' | null;
+    const dateFromParam = urlParams.get('date_from') || '';
+    const dateToParam = urlParams.get('date_to') || '';
+    
+    setTypeFilter(type || 'all');
+    setDateFrom(dateFromParam);
+    setDateTo(dateToParam);
+  }, []);
+
   useEffect(() => {
     fetchEvents();
-  }, []);
+    updateUrl();
+  }, [fetchEvents, updateUrl]);
 
   const totalRevenue = events.reduce((sum: number, event: Event) => sum + event.value, 0);
   const paymentCount = events.filter((e: Event) => e.type === 'payment').length;
@@ -117,6 +208,24 @@ export function Dashboard() {
               />
             </div>
 
+<div className="flex-1 min-w-[150px]">
+              <label htmlFor="type-filter" className="block text-sm font-medium text-gray-700 mb-2">
+                Tipo
+              </label>
+              <select
+                id="type-filter"
+                value={typeFilter}
+                onChange={(e) => {
+                  setTypeFilter(e.target.value as 'all' | 'payment' | 'upsell');
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+              >
+                <option value="all">Todos</option>
+                <option value="payment">Vendas</option>
+                <option value="upsell">Upsells</option>
+              </select>
+            </div>
+
             <button 
               onClick={fetchEvents}
               disabled={loading}
@@ -124,6 +233,14 @@ export function Dashboard() {
             >
               <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
               {loading ? 'Carregando...' : 'Atualizar'}
+            </button>
+
+            <button 
+              onClick={() => setShowAddForm(true)}
+              className="flex items-center gap-2 px-5 py-2 bg-green-500 text-white rounded-lg text-sm font-medium hover:bg-green-600 transition-all active:scale-95 whitespace-nowrap"
+            >
+              <Plus size={18} />
+              Adicionar Evento
             </button>
           </div>
         </div>
@@ -187,6 +304,156 @@ export function Dashboard() {
             </table>
           </div>
         </div>
+
+        {showAddForm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-xl p-6 w-full max-w-md">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-gray-900">Adicionar Evento</h2>
+                <button
+                  onClick={closeForm}
+                  className="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-all"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <form onSubmit={handleCreateEvent} className="space-y-4">
+                <div>
+                  <label htmlFor="type" className="block text-sm font-medium text-gray-700 mb-2">
+                    Tipo de Evento
+                  </label>
+                  <select
+                    id="type"
+                    value={formData.type}
+                    onChange={(e) => {
+                      setFormData({...formData, type: e.target.value as 'payment' | 'upsell'});
+                      clearFieldError('type');
+                    }}
+                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+                      getFieldError('type') ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                    required
+                  >
+                    <option value="payment">Venda</option>
+                    <option value="upsell">Upsell</option>
+                  </select>
+                  {getFieldError('type') && (
+                    <p className="mt-1 text-sm text-red-600">{getFieldError('type')}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+                    Nome do Cliente
+                  </label>
+                  <input
+                    id="name"
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => {
+                      setFormData({...formData, name: e.target.value});
+                      clearFieldError('name');
+                    }}
+                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+                      getFieldError('name') ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                    required
+                  />
+                  {getFieldError('name') && (
+                    <p className="mt-1 text-sm text-red-600">{getFieldError('name')}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+                    E-mail
+                  </label>
+                  <input
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => {
+                      setFormData({...formData, email: e.target.value});
+                      clearFieldError('email');
+                    }}
+                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+                      getFieldError('email') ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                    required
+                  />
+                  {getFieldError('email') && (
+                    <p className="mt-1 text-sm text-red-600">{getFieldError('email')}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label htmlFor="value" className="block text-sm font-medium text-gray-700 mb-2">
+                    Valor (R$)
+                  </label>
+                  <input
+                    id="value"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.value}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setFormData({...formData, value: value === '' ? '' : parseFloat(value) || 0});
+                      clearFieldError('value');
+                    }}
+                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+                      getFieldError('value') ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                    required
+                  />
+                  {getFieldError('value') && (
+                    <p className="mt-1 text-sm text-red-600">{getFieldError('value')}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label htmlFor="timestamp" className="block text-sm font-medium text-gray-700 mb-2">
+                    Data da Compra
+                  </label>
+                  <input
+                    id="timestamp"
+                    type="datetime-local"
+                    value={formData.timestamp}
+                    onChange={(e) => {
+                      setFormData({...formData, timestamp: e.target.value});
+                      clearFieldError('timestamp');
+                    }}
+                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+                      getFieldError('timestamp') ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                    required
+                  />
+                  {getFieldError('timestamp') && (
+                    <p className="mt-1 text-sm text-red-600">{getFieldError('timestamp')}</p>
+                  )}
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={closeForm}
+                    className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-50 transition-all"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="flex-1 px-4 py-2 bg-green-500 text-white rounded-lg text-sm font-medium hover:bg-green-600 disabled:opacity-60 disabled:cursor-not-allowed transition-all active:scale-95"
+                  >
+                    {submitting ? 'Salvando...' : 'Adicionar Evento'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

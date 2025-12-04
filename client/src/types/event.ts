@@ -11,4 +11,7 @@ export interface Event {
 export interface EventFilters {
   date_from?: string;
   date_to?: string;
+  email?: string;
+  type?: 'payment' | 'upsell';
+  name?: string;
 }
