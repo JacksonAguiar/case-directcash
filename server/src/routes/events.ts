@@ -37,11 +37,14 @@ eventsRouter.get('/add', async (req: Request, res: Response) => {
   try {
     const { type, name, email, value, timestamp, age } = req.query;
     
-    const convertedAge = age ? parseInt(age as string, 10) : undefined;
+
+    
+    console.log('Received event data:', { type, name, email, value, timestamp, age });
+    const convertedAge = age ? parseInt(age as string) : undefined;
     const validatedData = eventSchema.parse({
       type,
       name,
-      convertedAge,
+      age: convertedAge,
       email,
       value: value ? parseFloat(value as string) : undefined,
       timestamp,
