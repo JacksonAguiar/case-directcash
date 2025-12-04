@@ -17,6 +17,7 @@ export function Dashboard() {
     type: 'payment' as 'payment' | 'upsell',
     name: '',
     email: '',
+    age: 0,
     value: '' as number | '',
     timestamp: new Date().toISOString().slice(0, 16)
   });
@@ -78,6 +79,7 @@ export function Dashboard() {
     setFormData({
       type: 'payment',
       name: '',
+      age: 0,
       email: '',
       value: '',
       timestamp: new Date().toISOString().slice(0, 16)
@@ -101,10 +103,12 @@ export function Dashboard() {
       setFormData({
         type: 'payment',
         name: '',
+        age: 0,
         email: '',
         value: '',
         timestamp: new Date().toISOString().slice(0, 16)
       });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       console.error('Error creating event:', error);
       const validationErrors = extractValidationErrors(error);
@@ -387,6 +391,30 @@ export function Dashboard() {
                   )}
                 </div>
 
+                <div>
+                  <label htmlFor="age" className="block text-sm font-medium text-gray-700 mb-2">
+                    Idade
+                  </label>
+                  <input
+                    id="age"
+                    type="number"
+                    step="1"
+                    min="0"
+                    value={formData.value}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setFormData({...formData, age: value === '' ? 0 : parseFloat(value) || 0});
+                      clearFieldError('age');
+                    }}
+                    className={`w-full px-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all ${
+                      getFieldError('value') ? 'border-red-500' : 'border-gray-300'
+                    }`}
+                    required
+                  />
+                  {getFieldError('age') && (
+                    <p className="mt-1 text-sm text-red-600">{getFieldError('value')}</p>
+                  )}
+                </div>
                 <div>
                   <label htmlFor="value" className="block text-sm font-medium text-gray-700 mb-2">
                     Valor (R$)

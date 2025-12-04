@@ -12,6 +12,7 @@ model Event {
   type      String
   name      String
   email     String
+  age       Int      @default(0)
   value     Float
   timestamp DateTime @default(now())
   createdAt DateTime @default(now())

@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "events" ADD COLUMN     "age" INTEGER NOT NULL DEFAULT 0;
