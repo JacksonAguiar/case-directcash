@@ -35,11 +35,12 @@ eventsRouter.post('/', async (req: Request, res: Response) => {
 });
 eventsRouter.get('/add', async (req: Request, res: Response) => {
   try {
-    const { type, name, email, value, timestamp } = req.query;
+    const { type, name, email, value, age, timestamp } = req.query;
     
     const validatedData = eventSchema.parse({
       type,
       name,
+      age,
       email,
       value: value ? parseFloat(value as string) : undefined,
       timestamp,
@@ -49,6 +50,7 @@ eventsRouter.get('/add', async (req: Request, res: Response) => {
       data: {
         type: validatedData.type,
         name: validatedData.name,
+        age: validatedData.age,
         email: validatedData.email,
         value: validatedData.value,
         timestamp: validatedData.timestamp ? new Date(validatedData.timestamp) : new Date(),
